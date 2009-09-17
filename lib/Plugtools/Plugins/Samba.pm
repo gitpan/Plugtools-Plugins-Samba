@@ -11,11 +11,11 @@ Plugtools::Plugins::Samba - Provides various methods used by the plugins in this
 
 =head1 VERSION
 
-Version 0.0.0
+Version 0.1.0
 
 =cut
 
-our $VERSION = '0.0.0';
+our $VERSION = '0.1.0';
 
 
 =head1 SYNOPSIS
@@ -290,9 +290,23 @@ sub makeSambaAccountEntry{
 	
 	#isSambaAccountEntry just checks if it is properly setup... if one of the following is missing,
 	#then it should be removed and then re-added
-	$args{entry}->delete('sambaSID');
-	$args{entry}->delete('sambaPrimaryGroupSID');
-	$args{entry}->delete('objectClass'=>'sambaSamAccount');
+	my $sid=$args{entry}->get_value('sambaSID');
+	if (defined($sid)) {
+		$args{entry}->delete('sambaSID');
+	}
+	my $pgsid=$args{entry}->get_value('sambaPrimaryGroupSID');
+	if (defined($pgsid)) {
+		$args{entry}->delete('sambaPrimaryGroupSID');
+	}
+	my @ocA=$args{entry}->get_value('objectClass');
+	my $int=0;
+	while (defined($ocA[$int])) {
+		if ($ocA[$int] eq 'sambaSamAccount') {
+			$args{entry}->delete('objectClass'=>'sambaSamAccount');
+		}
+
+		$int++;
+	}
 
 	$args{entry}->add('objectClass'=>'sambaSamAccount');
 	$args{entry}->add('sambaSID'=>$args{sid});
