@@ -42,8 +42,7 @@ sub plugin{
 	my %opts;
 	if(defined($_[1])){
 		%opts= %{$_[1]};
-	};
-	my %args;
+	};	my %args;
 	if(defined($_[2])){
 		%args= %{$_[2]};
 	};

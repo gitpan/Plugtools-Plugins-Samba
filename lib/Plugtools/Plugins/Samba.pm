@@ -11,11 +11,11 @@ Plugtools::Plugins::Samba - Provides various methods used by the plugins in this
 
 =head1 VERSION
 
-Version 0.1.0
+Version 0.1.1
 
 =cut
 
-our $VERSION = '0.1.0';
+our $VERSION = '0.1.1';
 
 
 =head1 SYNOPSIS
@@ -315,6 +315,90 @@ sub makeSambaAccountEntry{
 	return 1;
 }
 
+=head2 removeSambaAcctEntry
+
+Remove the samba stuff from a user.
+
+=head3 entry
+
+This is a Net::LDAP::Entry to remove attributes
+related to sambaSamAccount from.
+
+=cut
+
+sub removeSambaAcctEntry{
+	my $self=$_[0];
+	my %args;
+	if(defined($_[1])){
+		%args= %{$_[1]};
+	};
+
+	#make sure we have a LDAP entry
+	if (!defined($args{entry})) {
+		$self->{error}=3;
+		$self->{errorString}='No LDAP entry defined';
+		warn('Plugtools-Plugins-Samba makeSambaAccountEntry:3: '.$self->{errorString});
+		return undef;
+	}
+
+	my @OCs=$args{entry}->get_value('objectClass');
+	my $int=0;
+	my $matched=0;
+	while (defined($OCs[$int])) {
+		if ($OCs[$int] eq 'sambaSamAccount') {
+			$matched=1;
+		}
+
+		$int++;
+	}
+
+	#nothing to do
+	if (!$matched) {
+		return 1;
+	}
+
+	$args{entry}->delete('objectClass'=>'sambaSamAccount');
+
+	my @attributes=(
+					'sambaLMPassword',
+					'sambaNTPassword',
+					'sambaPwdLastSet',
+					'sambaLogonTime',
+					'sambaLogoffTime',
+					'sambaKickoffTime',
+					'sambaPwdCanChange',
+					'sambaPwdMustChange',
+					'sambaAcctFlags',
+					'sambaHomePath',
+					'sambaHomeDrive',
+					'sambaLogonScript',
+					'sambaProfilePath',
+					'sambaUserWorkstations',
+					'sambaPrimaryGroupSID',
+					'sambaDomainName',
+					'sambaMungedDial',
+					'sambaBadPasswordCount',
+					'sambaBadPasswordTime',
+					'sambaPasswordHistory',
+					'sambaLogonHours',
+					);
+
+	#tests for any possible attributes
+	$int=0;
+	while ($attributes[$int]) {
+		my $test=$args{entry}=get_value($attributes[$int]);
+
+		#if it is is present, remove it
+		if (defined($test)) {
+			$args{entry}->delete($attributes[$int]);
+		}
+
+		$int++;
+	}
+
+	return 1;
+}
+
 =head2 setPassEntry
 
 This sets the password for a Samba account.
@@ -387,8 +471,14 @@ sub setPassEntry{
 		$args{entry}->delete('sambaLMPassword');
 	}
 
+	$lmp=$args{entry}->get_value('sambaPwdLastSet');
+	if ($lmp) {
+		$args{entry}->delete('sambaPwdLastSet');
+	}
+
 	$args{entry}->add('sambaNTPassword'=>nthash($args{pass}));
 	$args{entry}->add('sambaLMPassword'=>lmhash($args{pass}));
+	$args{entry}->add('sambaPwdLastSet'=>time());
 
 	return 1;
 }
